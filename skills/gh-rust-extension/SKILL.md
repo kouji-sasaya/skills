@@ -111,41 +111,6 @@ After cloning, keep a structure like this:
 └── .git/
 ```
 
-## Example command pattern
-
-If the current directory is `gh-docker`, the project/binary name is `gh-docker`, and the installed command is `gh docker`.
-
-Use the project name in Rust and package metadata as `gh-docker`, not as a fixed `docker` literal:
-
-```rust
-use clap::{Parser, Subcommand};
-
-#[derive(Parser)]
-#[command(name = "gh-docker")]
-struct Cli {
-    #[command(subcommand)]
-    command: Commands,
-}
-
-#[derive(Subcommand)]
-enum Commands {
-    Run,
-    Status,
-    Logs,
-}
-
-fn main() {
-    let cli = Cli::parse();
-    match cli.command {
-        Commands::Run => println!("run"),
-        Commands::Status => println!("status"),
-        Commands::Logs => println!("logs"),
-    }
-}
-```
-
-The actual CLI entrypoint for users is `gh docker`, but the project/binary artifact remains `gh-docker`.
-
 ## Critical anti-pattern guardrails
 
 Before making any code changes, enforce these rules:
@@ -174,12 +139,25 @@ For project `gh-docker`, the following must be consistent:
 - command module names: only change when the user explicitly requests a new command structure
 - root command references: do not create unrelated extra modules like `src/command/docker.rs` if the user did not ask for it
 
+For a specific rename such as `gh-myapp`:
+
+- the Rust file must be renamed to reflect the actual command name, e.g. `myapp.rs`
+- the command type must match the file name, e.g. `MyappCommand`
+- all imports and module declarations must match that name exactly
+- if the original code had `animal.rs` or `AnimalCommand`, those names must be replaced with `myapp.rs` and `MyappCommand` only when the user has explicitly requested the new command name
+- never keep old names like `AnimalCommand` or `animal.rs` when the project name has changed to `gh-myapp`
+
+When the user requests `gh-myapp`, do not assume `gh animal` and `src/command/animal.rs` are still valid. Rename the actual file and symbol names to match the new project command, and update all module paths and references accordingly.
+
 ## Failure-prevention rules
 
 - If the current project is based on gh-animal, the rename should be a controlled, minimal edit.
 - If the build starts failing repeatedly after renames, stop and inspect the actual compile errors instead of continuing to rename more symbols.
 - Avoid creating new command files in response to a naming change unless the user specifically requested a new command.
 - Avoid changing `animal` to `docker` by replacing every occurrence blindly; update only the file names and references that are required by the actual extension contract.
+- When the project is renamed to `gh-myapp`, the command module must become `myapp.rs`, and the associated type must become `MyappCommand`.
+- The rename must be reflected in the file path, module declaration, import statement, and struct/type name in the same edit pass.
+- Do not leave stale references such as `src/command/animal.rs`, `AnimalCommand`, or `gh animal` in a `gh-myapp` project.
 
 ## Final rules
 
