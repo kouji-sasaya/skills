@@ -5,93 +5,120 @@ description: "Rust で GitHub CLI 拡張コマンドを作るためのテンプ�
 
 # gh-rust-extension
 
-You are creating a GitHub CLI extension in Rust. Use the repository at https://github.com/kouji-sasaya/gh-animal as the reference pattern.
+You are creating a new Rust-based GitHub CLI extension by starting from the template repository at https://github.com/kouji-sasaya/gh-animal.
 
-## Goal
+## Required workflow
 
-Generate a project that can be installed as a `gh` extension and behaves like:
+When the user asks for a new `gh` extension, follow this exact template process:
 
-- `gh <extension-name> <subcommand>`
-- a single Rust binary compiled as a GitHub CLI extension
-- a release pipeline that publishes platform binaries
-- local data files bundled next to the binary
+1. Use the current directory name as the extension command name.
+   - If the folder is named `gh-docker`, the extension name must become `gh-docker`.
+   - The project name, binary name, package name, README command examples, and usage examples must all use the current directory name.
+   - The command used by `gh` will become `gh <current-dir-name>`.
+   - Example: `gh-docker` => `gh docker` if the project is named `gh-docker` and the binary is `gh-docker`.
 
-## Reference pattern
+2. Start from a clean empty directory.
+   - The target project directory must be empty.
+   - Confirm that there is no `.git` directory, no tracked files, and no existing source files.
+   - This is required because the template is created by:
+     ```bash
+     git clone https://github.com/kouji-sasaya/gh-animal .
+     ```
+   - If `.git` exists or the directory is not empty, stop and ask the user to use an empty folder first.
 
-Use the following ideas from gh-animal:
+2. Clone the real template repository into the empty folder.
+   ```bash
+   git clone https://github.com/kouji-sasaya/gh-animal .
+   ```
 
-- `gh extension create` is the starting point
-- choose `Other Precompiled (C++, Rust, etc)` when asked which kind of extension
-- create a Rust binary whose package name is `gh-<extension-name>`
-- define commands with subcommands such as `dog`, `cat`, `fox`, `rat`
-- package the binary alongside a `data/` directory in release artifacts
-- build scripts create `dist/...` output for each platform
+3. Treat the cloned repository as the base template.
+   - Keep the same overall structure and conventions from gh-animal.
+   - Preserve the layout for:
+     - `src/`
+     - `data/`
+     - `build.sh`
+     - `.github/workflows/`
+     - `README.md`
+   - Reuse the same pattern for a single Rust binary with subcommands.
 
-## Default approach
+4. Rename the extension to the current directory name.
+   - Example: if the current folder is `gh-docker`, then change the package name, binary name, README examples, and any command references to `gh-docker`.
+   - Do not keep the original `gh-animal` naming in the final result.
+   - The directory name is the canonical name for the extension.
 
-If the user asks to create a new extension, do the following:
+5. Keep the behavior and structure aligned with gh-animal.
+   - Provide subcommands such as `dog`, `cat`, `fox`, `rat` when appropriate.
+   - Use `clap` for parsing.
+   - Keep command output simple and friendly.
+   - If runtime data is required, load it from a `data/` directory next to the executable, not from the project root.
 
-1. Confirm the extension name.
-   - The final binary command should be `gh-<name>`.
-   - The command path used by `gh` will be `gh <name>`.
+6. Prepare the project for release.
+   - Make sure `cargo build` works.
+   - Make sure `cargo run -- --help` works.
+   - Make sure `./build.sh` generates release artifacts.
+   - Package the binary and `data/` directory together.
 
-2. Confirm the subcommands and arguments.
-   - Example: `gh animal dog`, `gh animal cat`, `gh animal fox`
-   - Keep the CLI simple and easy to understand.
+## Template source
 
-3. Create a Rust project scaffold with:
-   - `Cargo.toml`
-   - `src/main.rs`
-   - `src/cli.rs` or `src/commands.rs`
-   - `data/` directory if the extension needs bundled content
-   - `build.sh`
-   - `.github/workflows/release.yml`
-   - `README.md`
+The project must be modeled directly on the repository:
 
-4. Use `clap` for subcommand parsing.
-   - `use clap::{Parser, Subcommand};`
-   - Define `enum Command { ... }`
-   - Implement `match` for each command.
+https://github.com/kouji-sasaya/gh-animal
 
-5. Follow the gh-animal pattern:
-   - the root binary handles subcommands
-   - print help when no subcommand is passed
-   - keep output concise and human-friendly
-   - support quick local execution with `cargo run -- <subcommand>`
+This is not a conceptual example only. It is the actual template to copy from.
 
-6. For packaged runtime data:
-   - prefer reading files from `data/` next to the executable
-   - support local development and packaged release builds
-   - do not assume the current working directory is the repo root
+## Required empty-directory check
 
-7. Make the project release-ready:
-   - compile the binary with `cargo build`
-   - run `cargo run -- --help`
-   - run `cargo test` if tests are present
-   - run `./build.sh` to generate release artifacts
-   - package the built binary and `data/` directory together
+Before running the clone, verify that:
 
-## Suggested Cargo.toml
-
-Use a simple structure like this:
-
-```toml
-[package]
-name = "gh-<extension-name>"
-version = "0.1.0"
-edition = "2021"
-
-[dependencies]
-clap = { version = "4", features = ["derive"] }
+```bash
+ls -la
 ```
 
-## Suggested command pattern
+shows an empty directory with no `.git` directory and no tracked files.
+
+If any of the following are present, do not proceed:
+
+- `.git/`
+- existing source files
+- an uncommitted project already in the directory
+
+The correct action is:
+
+```bash
+mkdir -p <target-dir>
+cd <target-dir>
+ls -la
+# confirm empty
+git clone https://github.com/kouji-sasaya/gh-animal .
+```
+
+## Suggested project structure
+
+After cloning, keep a structure like this:
+
+```text
+.
+├── Cargo.toml
+├── build.sh
+├── README.md
+├── data/
+├── src/
+│   └── main.rs
+├── .github/
+│   └── workflows/
+│       └── release.yml
+└── .git/
+```
+
+## Example command pattern
+
+If the current directory is `gh-docker`, use the project name and command name as `gh-docker` throughout:
 
 ```rust
 use clap::{Parser, Subcommand};
 
 #[derive(Parser)]
-#[command(name = "gh-<extension-name>")]
+#[command(name = "gh-docker")]
 struct Cli {
     #[command(subcommand)]
     command: Commands,
@@ -99,95 +126,30 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    Dog,
-    Cat,
-    Fox,
-    Rat,
+    Run,
+    Status,
+    Logs,
 }
 
 fn main() {
     let cli = Cli::parse();
     match cli.command {
-        Commands::Dog => println!("dog"),
-        Commands::Cat => println!("cat"),
-        Commands::Fox => println!("fox"),
-        Commands::Rat => println!("rat"),
+        Commands::Run => println!("run"),
+        Commands::Status => println!("status"),
+        Commands::Logs => println!("logs"),
     }
 }
 ```
 
-## Build script pattern
-
-Use a `build.sh` script similar to the gh-animal reference:
-
-- build the binary for the target platform
-- output artifacts to `dist/`
-- copy `data/` into the release output
-- ensure the artifact can be installed as a `gh` extension
-
-Example shell flow:
-
-```bash
-#!/usr/bin/env bash
-set -eu
-
-mkdir -p dist
-cargo build --release
-cp target/release/gh-<extension-name> dist/
-cp -R data dist/
-```
-
-## Release workflow
-
-Add a GitHub Actions workflow that:
-
-- runs on tag pushes like `v*`
-- builds the binary for the target OS/architecture
-- uploads release assets
-- keeps `data/` bundled so runtime resources are available
-
-## README template
-
-Create a README with these sections:
-
-- project overview
-- installation instructions
-- usage examples
-- development steps
-- build and release steps
-- note that it is a Rust-based `gh` extension
-
-## Preferred user-facing response
-
-When the user asks for a new `gh` extension, provide:
-
-1. a short explanation of what will be created
-2. the directory structure to generate
-3. the Rust code skeleton
-4. the install command
-5. a validation checklist (`cargo build`, `cargo run -- --help`, `./build.sh`)
-
-## Install guidance
-
-Tell the user to install the extension with:
-
-```bash
-gh extension install <owner>/<repo>
-```
-
-For a local extension during development:
-
-```bash
-gh extension install .
-```
-
 ## Final rules
 
-- Prefer small, clear command names.
-- Keep the CLI to one binary with subcommands.
-- Use the gh-animal repository structure as the template.
-- Do not over-engineer; the goal is a simple and easy-to-release gh extension.
-- If the user says "create a Rust gh extension", generate a ready-to-use starter project, not just a description.
+- The primary template is `https://github.com/kouji-sasaya/gh-animal`.
+- Always start from an empty directory.
+- Check that `.git` does not exist before cloning.
+- Use the current directory name as the extension name.
+- Example: `gh-docker` => all relevant file names, package names, and CLI references should be `gh-docker`.
+- Do not invent a custom structure that differs from the gh-animal template.
+- Adapt the contents to the current directory name, subcommands, and behavior, but keep the same repository architecture and release workflow.
+- If the user says "make a gh extension like gh-animal", clone the template repository and build on top of it.
 
-
-This skill is intentionally modeled after the architecture and workflow in the gh-animal project, which is a practical Rust example of a GitHub CLI extension.
+This skill is specifically designed to scaffold a Rust `gh` extension by cloning the gh-animal repository as the starting template.
